@@ -40,11 +40,11 @@ function App(){
  function start(){void fullscreen();scan();}
  const loading=phase==='preparando';
  return <div className="app" ref={root}>
-  <header><a className="brand" href="/" onClick={e=>e.preventDefault()}><span className="brand-icon">◉</span> SURCO<span className="edition">LA MÚSICA ES EL JUEGO</span></a><button className="fullscreen" onClick={()=>void fullscreen()} disabled={full}>⛶ <span>{full?'PANTALLA COMPLETA ACTIVA':'PANTALLA COMPLETA'}</span></button></header>
+  <header><a className="brand" href="/" onClick={e=>e.preventDefault()}><span className="brand-icon">◉</span> telfonola<span className="edition">LA MÚSICA ES EL JUEGO</span></a><button className="fullscreen" onClick={()=>void fullscreen()} disabled={full}>⛶ <span>{full?'PANTALLA COMPLETA ACTIVA':'PANTALLA COMPLETA'}</span></button></header>
   <main>
    <h1>{phase==='inicio'?<>Una carta.<br/><em>Una canción.</em></>:phase==='escaneando'?<>Encuentra<br/><em>el siguiente tema.</em></>:loading?<>Preparando<br/><em>la canción.</em></>:<>Escucha.<br/><em>Déjate llevar.</em></>}</h1>
    <div className="stage">
-    {phase==='escaneando'?<div className="camera"><video ref={video} muted playsInline autoPlay/><div className="scan-frame"/><span>Coloca el QR dentro del marco</span></div>:<div className={`vinyl ${phase==='escucha'&&!message?'spinning':''}`} role="img" aria-label="Disco de vinilo decorativo"><div className="label"><span>SURCO</span><i/><small>SIDE A · 33 RPM</small></div></div>}
+    {phase==='escaneando'?<div className="camera"><video ref={video} muted playsInline autoPlay/><div className="scan-frame"/><span>Coloca el QR dentro del marco</span></div>:<div className={`vinyl ${phase==='escucha'&&!message?'spinning':''}`} role="img" aria-label="Disco de vinilo decorativo"><div className="label"><span>telfonola</span><i/><small>SIDE A · 33 RPM</small></div></div>}
     {phase!=='escaneando'&&<span className="stage-note">{phase==='escucha'&&!message?'REPRODUCIENDO SEGÚN SPOTIFY · ANIMACIÓN VISUAL':'DALE UNA VUELTA A LA NOCHE'}</span>}
    </div>
    <div className="controls" aria-live="polite">
