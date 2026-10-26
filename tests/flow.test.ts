@@ -23,8 +23,17 @@ describe('tarjetas',()=>{
  it.each([false,true])('decodifica QR real invertido=%s',inverted=>{const p=pixels(inverted);expect(jsQR(p.data,p.width,p.height,{inversionAttempts:'attemptBoth'})?.data).toBe(url);});
 });
 describe('reproducción oficial',()=>{
- it('envía una solicitud sin navegación y acepta 204',async()=>{const fetcher=vi.fn().mockResolvedValue({status:204});await requestPlayback(id,'test',fetcher);expect(fetcher).toHaveBeenCalledTimes(1);expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({uris:[`spotify:track:${id}`],position_ms:0});});
- it.each([401,403,404,429,500])('explica error %s',async status=>{await expect(requestPlayback(id,'test',vi.fn().mockResolvedValue({status}))).rejects.toThrow();});
+ const devices={ok:true,json:async()=>({devices:[{id:'phone',is_active:true,is_restricted:false}]})};
+ const noWait=async()=>{};
+ it('dirige una sola orden al dispositivo activo y confirma el estado',async()=>{const fetcher=vi.fn().mockResolvedValueOnce(devices).mockResolvedValueOnce({status:204}).mockResolvedValue({ok:true,status:200,json:async()=>({device:{id:'phone'},item:{id},is_playing:true})});const result=await requestPlayback(id,'test',fetcher,noWait);expect(result.confirmed).toBe(true);expect(fetcher.mock.calls[1][0]).toContain('device_id=phone');expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({uris:[`spotify:track:${id}`],position_ms:0});expect(fetcher.mock.calls.filter(c=>c[1].method==='PUT')).toHaveLength(1);});
+ it.each([401,403,404,429,500])('explica error %s',async status=>{await expect(requestPlayback(id,'test',vi.fn().mockResolvedValueOnce(devices).mockResolvedValue({status}),noWait)).rejects.toThrow();});
+ it.each([204,'paused','different','other-device','network'])('no confunde 204 con reproducción: %s',async state=>{
+  const fetcher=vi.fn().mockResolvedValueOnce(devices).mockResolvedValueOnce({status:204});
+  if(state==='network')fetcher.mockRejectedValue(Error('network'));
+  else fetcher.mockResolvedValue({ok:true,status:state===204?204:200,json:async()=>({device:{id:state==='other-device'?'other':'phone'},item:{id:state==='different'?'different':id},is_playing:state!=='paused'})});
+  const result=await requestPlayback(id,'test',fetcher,noWait);expect(result.confirmed).toBe(false);expect(result.message).toBeTruthy();expect(fetcher.mock.calls.filter(c=>c[1].method==='PUT')).toHaveLength(1);
+ });
+ it('no envía órdenes sin dispositivo activo',async()=>{const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({devices:[]})});await expect(requestPlayback(id,'test',fetcher,noWait)).rejects.toThrow('No hay un dispositivo');expect(fetcher).toHaveBeenCalledOnce();});
 });
 describe('ciclos de cámara',()=>{
  it('10 ciclos liberan tracks y entregan una lectura por apertura',async()=>{

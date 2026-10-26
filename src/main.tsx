@@ -10,6 +10,7 @@ type Phase='inicio'|'escaneando'|'preparando'|'escucha';
 function App(){
  const [phase,setPhase]=useState<Phase>('inicio'),[message,setMessage]=useState(''),[ready,setReady]=useState(false),[connected,setConnected]=useState(false),[full,setFull]=useState(false),[probe,setProbe]=useState('');
  const root=useRef<HTMLDivElement>(null),video=useRef<HTMLVideoElement>(null),busy=useRef(false),lastId=useRef<string|null>(null);
+ const [playbackNote,setPlaybackNote]=useState('');
  useEffect(()=>{finishAuth().catch(()=>setMessage('No se pudo conectar Spotify. Vuelve a intentarlo.')).finally(()=>{setConnected(!!token());setReady(true);});},[]);
  async function fullscreen(){try{await root.current?.requestFullscreen();}catch{setMessage('Pantalla completa no disponible. Puedes seguir jugando.');}}
  useEffect(()=>{const change=()=>setFull(!!document.fullscreenElement);document.addEventListener('fullscreenchange',change);return()=>document.removeEventListener('fullscreenchange',change);},[]);
@@ -21,8 +22,8 @@ function App(){
   return()=>{disposed=true;void wake?.release();document.removeEventListener('visibilitychange',acquire);};
  },[phase]);
  async function play(id:string){
-  if(busy.current)return;busy.current=true;setMessage('');setPhase('preparando');lastId.current=id;
-  try{const access=token();if(!access){setConnected(false);throw new Error('Conecta Spotify para continuar.');}await requestPlayback(id,access);setPhase('escucha');}
+  if(busy.current)return;busy.current=true;setMessage('');setPlaybackNote('');setPhase('preparando');lastId.current=id;
+  try{const access=token();if(!access){setConnected(false);throw new Error('Conecta Spotify para continuar.');}const result=await requestPlayback(id,access);setPlaybackNote(result.message);if(!result.confirmed)setMessage(result.message);setPhase('escucha');}
   catch(e){setPhase('escucha');setMessage(e instanceof Error?e.message:'No se pudo contactar con Spotify. Reintenta.');}
   finally{busy.current=false;}
  }
@@ -45,7 +46,7 @@ function App(){
    <h1>{phase==='inicio'?<>Una carta.<br/><em>Una canción.</em></>:phase==='escaneando'?<>Encuentra<br/><em>el siguiente tema.</em></>:loading?<>Preparando<br/><em>la canción.</em></>:<>Escucha.<br/><em>Déjate llevar.</em></>}</h1>
    <div className="stage">
     {phase==='escaneando'?<div className="camera"><video ref={video} muted playsInline autoPlay/><div className="scan-frame"/><span>Coloca el QR dentro del marco</span></div>:<div className={`vinyl ${phase==='escucha'&&!message?'spinning':''}`} role="img" aria-label="Disco de vinilo decorativo"><div className="label"><span>SURCO</span><i/><small>SIDE A · 33 RPM</small></div></div>}
-    {phase!=='escaneando'&&<span className="stage-note">{phase==='escucha'&&!message?'REPRODUCCIÓN SOLICITADA · ANIMACIÓN VISUAL':'DALE UNA VUELTA A LA NOCHE'}</span>}
+    {phase!=='escaneando'&&<span className="stage-note">{phase==='escucha'&&!message?'REPRODUCIENDO SEGÚN SPOTIFY · ANIMACIÓN VISUAL':'DALE UNA VUELTA A LA NOCHE'}</span>}
    </div>
    <div className="controls" aria-live="polite">
     {message&&<p className="error" role="alert">{message}</p>}
@@ -54,7 +55,7 @@ function App(){
     {phase==='inicio'&&connected&&<button className="primary" onClick={start}>EMPEZAR <span>→</span></button>}
     {loading&&<button className="primary" disabled>PREPARANDO…</button>}
     {phase==='escaneando'&&<button className="secondary" onClick={()=>{setPhase('escucha');setMessage('Escaneo cancelado. Puedes volver a intentarlo.');}}>CANCELAR</button>}
-    {phase==='escucha'&&<>{!connected&&<button className="secondary" onClick={()=>void connect().catch(()=>setMessage('No se pudo conectar.'))}>CONECTAR SPOTIFY</button>}{message&&lastId.current&&connected&&<button className="secondary" onClick={()=>void play(lastId.current!)}>REINTENTAR REPRODUCCIÓN</button>}<button className="primary" onClick={scan}>SIGUIENTE CARTA <span>→</span></button>{!message&&<p className="hint">Solicitud aceptada por Spotify.<br/>El disco no confirma que el audio esté sonando.</p>}</>}
+    {phase==='escucha'&&<>{(!connected||message)&&<button className="secondary" onClick={()=>void connect().catch(()=>setMessage('No se pudo conectar.'))}>CONECTAR SPOTIFY</button>}{message&&lastId.current&&connected&&<button className="secondary" onClick={()=>void play(lastId.current!)}>REINTENTAR REPRODUCCIÓN</button>}<button className="primary" onClick={scan}>SIGUIENTE CARTA <span>→</span></button>{!message&&<p className="hint">{playbackNote}</p>}</>}
    </div>
    {phase==='inicio'&&connected&&<details><summary>Prueba mínima de reproducción</summary><p>Antes de usar la cámara: pega un enlace de tarjeta y solicita reproducir. Comprueba que esta web sigue visible y el teléfono suena.</p><input type="url" aria-label="Enlace Spotify para prueba" placeholder="https://open.spotify.com/track/…" value={probe} onChange={e=>setProbe(e.target.value)}/><button className="secondary" onClick={()=>{try{void play(trackId(probe));setProbe('');}catch(e){setMessage((e as Error).message);}}}>PROBAR SIN CÁMARA</button></details>}
   </main><footer><span>SOLO TÚ, LAS CARTAS Y LA MÚSICA.</span><span>HECHO PARA ESCUCHAR</span></footer>

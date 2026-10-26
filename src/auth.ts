@@ -1,7 +1,9 @@
 const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined;
 const redirect = () => `${location.origin}/`;
 export const configured = Boolean(clientId);
+const scopes = 'user-modify-playback-state user-read-playback-state';
 export const token = () => {
+  if (!sessionStorage.getItem('scopes')?.split(' ').includes('user-read-playback-state')) return null;
   const expires = Number(sessionStorage.getItem('expires'));
   return Date.now() < expires ? sessionStorage.getItem('token') : null;
 };
@@ -12,7 +14,7 @@ export async function connect() {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
   const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
   sessionStorage.setItem('pkce',verifier); sessionStorage.setItem('oauth-state',state);
-  const params = new URLSearchParams({client_id:clientId!,response_type:'code',redirect_uri:redirect(),scope:'user-modify-playback-state',code_challenge_method:'S256',code_challenge:challenge,state});
+  const params = new URLSearchParams({client_id:clientId!,response_type:'code',redirect_uri:redirect(),scope:scopes,code_challenge_method:'S256',code_challenge:challenge,state});
   location.assign(`https://accounts.spotify.com/authorize?${params}`);
 }
 export async function finishAuth() {
@@ -27,5 +29,6 @@ export async function finishAuth() {
   const result = await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:clientId!,grant_type:'authorization_code',code:params.get('code')!,redirect_uri:redirect(),code_verifier:verifier}),signal:AbortSignal.timeout(15000)});
   if (!result.ok) throw new Error('No se pudo conectar Spotify. Inténtalo de nuevo.');
   const data = await result.json();
+  sessionStorage.setItem('scopes',data.scope ?? '');
   sessionStorage.setItem('token',data.access_token); sessionStorage.setItem('expires',String(Date.now()+data.expires_in*1000-30000));
 }
