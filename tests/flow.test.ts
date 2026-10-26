@@ -35,7 +35,15 @@ describe('reproducción oficial',()=>{
   else fetcher.mockResolvedValue({ok:true,status:state===204?204:200,json:async()=>({device:{id:state==='other-device'?'other':'phone'},item:{id:state==='different'?'different':id},is_playing:state!=='paused'})});
   const result=await requestPlayback(id,'test',fetcher,noWait);expect(result.confirmed).toBe(false);expect(result.message).toBeTruthy();expect(fetcher.mock.calls.filter(c=>c[1].method==='PUT')).toHaveLength(1);
  });
- it('no envía órdenes sin dispositivo activo',async()=>{const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({devices:[]})});await expect(requestPlayback(id,'test',fetcher,noWait)).rejects.toThrow('No hay un dispositivo');expect(fetcher).toHaveBeenCalledOnce();});
+ it('explica lista vacía y no envía órdenes si tampoco hay estado',async()=>{const fetcher=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({devices:[]})}).mockResolvedValue({ok:true,status:204});await expect(requestPlayback(id,'test',fetcher,noWait)).rejects.toThrow('La API no lista ningún dispositivo');expect(fetcher).toHaveBeenCalledTimes(2);});
+ it('usa el dispositivo del estado aunque no aparezca activo en la lista',async()=>{
+  const fetcher=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({devices:[]})}).mockResolvedValueOnce({ok:true,status:200,json:async()=>({device:{id:'phone',is_active:false,is_restricted:false},is_playing:true})}).mockResolvedValueOnce(track).mockResolvedValueOnce({status:204}).mockResolvedValue({ok:true,status:200,json:async()=>({device:{id:'phone'},item:{id},is_playing:true})});
+  expect((await requestPlayback(id,'test',fetcher,noWait)).confirmed).toBe(true);expect(fetcher.mock.calls[3][0]).toContain('device_id=phone');expect(fetcher.mock.calls.filter(c=>c[1].method==='PUT')).toHaveLength(1);
+ });
+ it.each([false,true])('no elige un dispositivo inactivo o restringido: %s',restricted=>{
+  const fetcher=vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({devices:[{id:'other',is_active:false,is_restricted:false}]})}).mockResolvedValue({ok:true,status:200,json:async()=>({device:{id:'phone',is_active:restricted,is_restricted:restricted},is_playing:restricted})});
+  return expect(requestPlayback(id,'test',fetcher,noWait)).rejects.toThrow('ninguno activo y controlable');
+ });
  it.each([{ok:false},{ok:true,json:async()=>({album:{uri:'invalid'},uri:'invalid'})}])('no envía órdenes si falla la preparación del álbum',async response=>{const fetcher=vi.fn().mockResolvedValueOnce(devices).mockResolvedValueOnce(response);await expect(requestPlayback(id,'test',fetcher,noWait)).rejects.toThrow();expect(fetcher.mock.calls.filter(c=>c[1].method==='PUT')).toHaveLength(0);});
 });
 describe('ciclos de cámara',()=>{

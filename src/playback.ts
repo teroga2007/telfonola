@@ -3,8 +3,25 @@ export async function requestPlayback(id: string, token: string, fetcher: typeof
   const devicesResponse=await fetcher('https://api.spotify.com/v1/me/player/devices',{headers,cache:'no-store',signal:AbortSignal.timeout(10000)});
   if(!devicesResponse.ok) throw new Error(devicesResponse.status===401||devicesResponse.status===403?'Vuelve a conectar Spotify para conceder los permisos de reproducción y consulta.':'No se pudieron consultar los dispositivos Spotify. Espera y reintenta.');
   const {devices}=await devicesResponse.json();
-  const device=(devices as {id:string|null;is_active:boolean;is_restricted:boolean}[]).find(d=>d.id&&d.is_active&&!d.is_restricted);
-  if(!device)throw new Error('No hay un dispositivo Spotify activo que podamos controlar. Reproduce algo en este teléfono, vuelve y reintenta.');
+  type Device={id:string|null;is_active:boolean;is_restricted:boolean;type?:string};
+  const reported=devices as Device[];
+  let device=reported.find(d=>d.id&&d.is_active&&!d.is_restricted);
+  if(!device){
+    // Connect enumeration can lag behind the actual playback session on Android.
+    // Use a device only when the playback endpoint identifies it as active/playing.
+    const current=await fetcher('https://api.spotify.com/v1/me/player',{headers,cache:'no-store',signal:AbortSignal.timeout(10000)});
+    if(current.status===401||current.status===403)throw new Error('Vuelve a conectar Spotify para conceder los permisos de reproducción y consulta.');
+    if(current.status===429)throw new Error('Spotify pide una pausa. Espera antes de reintentar.');
+    if(current.ok&&current.status!==204){
+      const state=await current.json();
+      const candidate=state.device as Device|undefined;
+      if(candidate?.id&&!candidate.is_restricted&&(candidate.is_active||state.is_playing))device=candidate;
+    }
+    if(!device){
+      const summary=reported.length===0?'La API no lista ningún dispositivo.':`La API lista ${reported.length} dispositivo(s), ninguno activo y controlable.`;
+      throw new Error(`${summary} Tampoco pudimos identificar un dispositivo activo en el estado de reproducción. Esto no significa que la música esté detenida. Abre Spotify, vuelve enseguida y pulsa REINTENTAR REPRODUCCIÓN. Si persiste, reconecta y comprueba que usas la misma cuenta.`);
+    }
+  }
   // Album context avoids the reported single-track URI playback failure.
   // Only keep the URIs needed for playback; never display or log metadata.
   const trackResponse=await fetcher(`https://api.spotify.com/v1/tracks/${encodeURIComponent(id)}`,{headers,cache:'no-store',signal:AbortSignal.timeout(10000)});
