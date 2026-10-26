@@ -42,7 +42,6 @@ function App(){
  return <div className="app" ref={root}>
   <header><a className="brand" href="/" onClick={e=>e.preventDefault()}><span className="brand-icon">◉</span> SURCO<span className="edition">LA MÚSICA ES EL JUEGO</span></a><button className="fullscreen" onClick={()=>void fullscreen()} disabled={full}>⛶ <span>{full?'PANTALLA COMPLETA ACTIVA':'PANTALLA COMPLETA'}</span></button></header>
   <main>
-   <div className="eyebrow"><span/> {phase==='inicio'?'TU PRÓXIMA CANCIÓN ESTÁ AQUÍ':phase==='escaneando'?'BUSCANDO EL RITMO':loading?'UN MOMENTO':'QUE SUENE LA MÚSICA'}</div>
    <h1>{phase==='inicio'?<>Una carta.<br/><em>Una canción.</em></>:phase==='escaneando'?<>Encuentra<br/><em>el siguiente tema.</em></>:loading?<>Preparando<br/><em>la canción.</em></>:<>Escucha.<br/><em>Déjate llevar.</em></>}</h1>
    <div className="stage">
     {phase==='escaneando'?<div className="camera"><video ref={video} muted playsInline autoPlay/><div className="scan-frame"/><span>Coloca el QR dentro del marco</span></div>:<div className={`vinyl ${phase==='escucha'&&!message?'spinning':''}`} role="img" aria-label="Disco de vinilo decorativo"><div className="label"><span>SURCO</span><i/><small>SIDE A · 33 RPM</small></div></div>}
@@ -58,7 +57,7 @@ function App(){
     {phase==='escucha'&&<>{(!connected||message)&&<button className="secondary" onClick={()=>void connect().catch(()=>setMessage('No se pudo conectar.'))}>CONECTAR SPOTIFY</button>}{message&&lastId.current&&connected&&<button className="secondary" onClick={()=>void play(lastId.current!)}>REINTENTAR REPRODUCCIÓN</button>}<button className="primary" onClick={scan}>SIGUIENTE CARTA <span>→</span></button>{!message&&<p className="hint">{playbackNote}</p>}</>}
    </div>
    {phase==='inicio'&&connected&&<details><summary>Prueba mínima de reproducción</summary><p>Antes de usar la cámara: pega un enlace de tarjeta y solicita reproducir. Comprueba que esta web sigue visible y el teléfono suena.</p><input type="url" aria-label="Enlace Spotify para prueba" placeholder="https://open.spotify.com/track/…" value={probe} onChange={e=>setProbe(e.target.value)}/><button className="secondary" onClick={()=>{try{void play(trackId(probe));setProbe('');}catch(e){setMessage((e as Error).message);}}}>PROBAR SIN CÁMARA</button></details>}
-  </main><footer><span>SOLO TÚ, LAS CARTAS Y LA MÚSICA.</span><span>HECHO PARA ESCUCHAR</span></footer>
+  </main><footer><span>SOLO TÚ, LAS CARTAS Y LA MÚSICA.</span><a href="mailto:sterogam@gmail.com">© 2026 s-digital</a></footer>
  </div>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);
