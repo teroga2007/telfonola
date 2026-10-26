@@ -23,6 +23,8 @@ App local React + TypeScript + Vite. El repositorio estaba vacío.
 
 ## Qué permite Spotify
 
+Para evitar el fallo reportado de órdenes con pistas sueltas (`uris`), se consulta la pista y se inicia su álbum (`context_uri`) con `offset.uri` en la canción exacta. Se conserva la web en primer plano y una sola orden por lectura. No se muestra ni registra el contenido de la respuesta. Advertencia funcional: al terminar, Spotify puede continuar con el resto del álbum; no se programa una pausa ni se modifica shuffle/repeat. Es una variante documentada de la API, pendiente de validar en el Samsung; los reportes de que evita el fallo son de escritorio, no una confirmación oficial para Android.
+
 La Web API oficial ofrece `PUT /v1/me/player/play`, con OAuth y los permisos `user-modify-playback-state` y `user-read-playback-state`. La app consulta los dispositivos y dirige una única orden al dispositivo activo controlable, sin transferir a otro dispositivo. Después consulta el estado hasta tres veces para comprobar la canción y el indicador de reproducción. Controla Spotify sin navegar fuera. Necesita Premium y un dispositivo disponible; no arranca una aplicación Spotify cerrada ni garantiza que el Samsung esté disponible en Spotify Connect. Abrir un enlace web no reproduce de forma fiable sin cambiar de aplicación. Pantalla completa y PWA no cambian esto.
 
 La prueba mínima está en Inicio → «Prueba mínima de reproducción», después de conectar Spotify: pega un enlace y pulsa «PROBAR SIN CÁMARA». Ejecuta únicamente esa orden oficial. Un 204 confirma aceptación de la solicitud, no audio audible. No se ha podido realizar una prueba real sin Client ID, autorización y teléfono. No hay fallback a enlaces, embeds ni cambios de foco.
